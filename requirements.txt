@@ -1,0 +1,10 @@
+django
+djangorestframework
+environs
+azure-storage-blob
+azure-keyvault-secrets
+openai==0.28
+langchain-community
+azure-cosmos
+PyJWT
+phonenumbers
