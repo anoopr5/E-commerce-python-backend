@@ -7,7 +7,7 @@ import json
 import jwt
 from datetime import datetime
 
-class UserList(APIView):
+class UserRegister(APIView):
 
     def post(self, request):
         try:
