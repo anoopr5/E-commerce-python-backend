@@ -7,7 +7,7 @@ class CosmosDBClient:
         self.database = self.client.create_database_if_not_exists(id=settings.COSMOS_DB['DATABASE_ID'])
         self.container = self.database.create_container_if_not_exists(
             id=container_name,
-            partition_key=PartitionKey(path="/productName"),
+            partition_key=PartitionKey(path="/productId"),
             offer_throughput=400
             )
 
@@ -40,19 +40,8 @@ class CosmosDBClient:
     def get_all_items(self):
         """Fetch all items from the container."""
         query = "SELECT * FROM c"  # Select all items from the container
-        result = []
         try:
             items = list(self.container.query_items(query=query, enable_cross_partition_query=True))
-
-            for item in items:
-                value = {
-                    'productName': item.get('productName'),
-                    'productPrice': item.get('productPrice'),
-                    'productQuantity': item.get('productQuantity'),
-                    'isActive': item.get('isActive')
-                }
-                if value.get('isActive'):
-                    result.append(value)
-            return result
+            return items
         except exceptions.CosmosHttpResponseError as e:
             return f"Error fetching items: {str(e)}"

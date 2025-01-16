@@ -10,11 +10,13 @@ def insert_product(product_name, product_description, product_price, product_qua
         db_client = CosmosDBClient(container_name='Products')
         db_item = db_client.read_item("productName", product_name)
         print("db_item: ",db_item)
-        # Create a new product object
+        
         if not db_item:
             print("INSIDE IF")
+            id = str(uuid.uuid4().int)[:8]
             product = {
-                'id': str(uuid.uuid4()),
+                'id': id,
+                'productId':id,
                 'productName': product_name,
                 'productDescription': product_description,
                 'productPrice': product_price,
@@ -32,6 +34,7 @@ def insert_product(product_name, product_description, product_price, product_qua
             print("INSIDE ELSE")
             product = {
                 'id': db_item['id'],
+                'productId': db_item['productId'],
                 'productName': db_item['productName'],
                 'productDescription': product_description,
                 'productPrice': product_price,
@@ -60,6 +63,7 @@ def update_product(product_name, product_description, product_price, product_qua
         if db_item:
             product = {
                 'id': db_item['id'],
+                'productId': db_item['productId'],
                 'productName': db_item['productName'],
                 'productDescription': product_description if product_description else db_item['productDescription'],
                 'productPrice': product_price if product_price else db_item['productPrice'],
@@ -83,8 +87,66 @@ def get_all_products():
     try:
         # Create a new CosmosDBClient instance
         db_client = CosmosDBClient(container_name='Products')
-        # Get all products from the database
-        result = db_client.get_all_items()
+        result = []
+        db_items = db_client.get_all_items()
+        for item in db_items:
+            value = {
+                'productId': item.get('productId'),
+                'productName': item.get('productName'),
+                'productPrice': item.get('productPrice'),
+                'productQuantity': item.get('productQuantity'),
+                'isActive': item.get('isActive')
+            }
+            if value.get('isActive'):
+                result.append(value)
         return result
+    except Exception as e:
+        return str(e)
+    
+def get_specific_products(product_ids):
+    """Get specific products from the database."""
+    try:
+        # Create a new CosmosDBClient instance
+        db_client = CosmosDBClient(container_name='Products')
+        result = []
+        not_found_ids = []
+        # Get specific products from the database
+        for product_id in product_ids:
+            print("product_id: ",product_id)
+            db_value = db_client.read_item("productId", product_id)
+            print("db_value: ",db_value)
+            if db_value:
+                value = {
+                    'productId': db_value.get('productId'),
+                    'productName': db_value.get('productName'),
+                    'productPrice': db_value.get('productPrice'),
+                    'productQuantity': db_value.get('productQuantity'),
+                    'isActive': db_value.get('isActive')
+                }
+                if value.get('isActive'):
+                    result.append(value)
+            else:
+                not_found_ids.append(product_id)
+        return result, not_found_ids
+    except Exception as e:
+        return str(e)
+    
+def delete_product(product_ids):
+    """Delete a product from the database."""
+    try:
+        # Create a new CosmosDBClient instance
+        db_client = CosmosDBClient(container_name='Products')
+        # Delete the product from the database
+        deleted_ids = []
+        not_found_ids = []
+        for product_id in product_ids:
+            db_value = db_client.read_item("productId", product_id)
+            if db_value:
+                print("product_id: ",product_id)
+                db_client.delete_item(user_id=product_id)
+                deleted_ids.append(product_id)
+            else:
+                not_found_ids.append(product_id)
+        return deleted_ids, not_found_ids
     except Exception as e:
         return str(e)

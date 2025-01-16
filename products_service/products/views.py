@@ -5,7 +5,7 @@ from rest_framework.status import *
 import json
 import jwt
 from datetime import datetime
-from .services import insert_product, update_product, get_all_products
+from .services import insert_product, update_product, get_all_products,get_specific_products,delete_product
 
 class ProductView(APIView):
     def post(self, request):
@@ -61,9 +61,37 @@ class ProductView(APIView):
         
     def get(self, request):
         try:
-            result = get_all_products()
-            return Response({'products': result}, status=HTTP_200_OK)
+            product_ids = request.query_params.getlist('productId', None)
+            if product_ids:
+                result,not_found_ids = get_specific_products(product_ids)
+                if len(not_found_ids) == len(product_ids):
+                    return Response({'message':f'Product not found for IDs: {not_found_ids}'}, status=HTTP_404_NOT_FOUND)
+                elif len(not_found_ids) > 0:
+                    return Response({'message':f'Product not found for IDs: {not_found_ids}','products': result}, status=HTTP_200_OK)
+                else:
+                    return Response({'products': result}, status=HTTP_200_OK)
+            else:
+                result = get_all_products()
+                return Response({'products': result}, status=HTTP_200_OK)
         
         except Exception as e:
             return Response({'message': f'Error getting products: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def delete(self, request):
+        try:
+            product_ids = request.query_params.getlist('productId', None)
+            if product_ids:
+                deleted_ids,not_found_ids = delete_product(product_ids)
+                if len(not_found_ids) == len(product_ids):
+                    return Response({'message':f'Product not found for IDs: {not_found_ids}'}, status=HTTP_404_NOT_FOUND)
+                elif len(not_found_ids) > 0:
+                    return Response({'message':f'Product not found for IDs: {not_found_ids}','deleted_ids': deleted_ids}, status=HTTP_200_OK)
+                else:
+                    return Response({'message': 'Product deleted successfully'}, status=HTTP_200_OK)
+            else:
+                return Response({'message': 'Product ID is required!'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'message': f'Error deleting product: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
 
