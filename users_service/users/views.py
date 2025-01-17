@@ -68,3 +68,23 @@ class UserLogin(APIView):
         except Exception as e:
             # If there's any other error, return a generic error response
             return Response({'message': f'Error creating user: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class CheckUserExistence(APIView):
+    
+    def post(self, request):
+        try:
+            # Get data from the request
+            email = request.data.get('email')
+            password = request.data.get('password')
+            
+            if not all([email, password]):
+                return Response({'message': 'All fields are required!'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            success,result = verify_creds(email, password)
+            if success:
+                return Response({'message': f'User exists'}, status=HTTP_200_OK)
+            else:
+                return Response({'message': f'{result}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({'message': f'Error creating user: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

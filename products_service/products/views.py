@@ -5,7 +5,7 @@ from rest_framework.status import *
 import json
 import jwt
 from datetime import datetime
-from .services import insert_product, update_product, get_all_products,get_specific_products,delete_product
+from .services import insert_product, update_product, get_all_products,get_specific_products,delete_product,verify_admin_jwt, verify_user_jwt
 
 class ProductView(APIView):
     def post(self, request):
@@ -17,15 +17,20 @@ class ProductView(APIView):
             product_quantity = request.data.get('productQuantity')
             product_category = request.data.get('productCategory')
             product_tags = request.data.get('productTags') 
-            isActive = request.data.get('isActive')
+            isActive = request.data.get('isActive',None)
+
+            jwt_token = request.headers.get('Authorization', None)
+            if jwt_token:
+                decorded_token = verify_admin_jwt(jwt_token)
+                if not decorded_token:
+                    return Response({'message': 'Unauthorized! or Token has Expired'}, status=status.HTTP_401_UNAUTHORIZED)
 
             # Check if all required fields are present  
-            if not all([product_name, product_description, product_price, product_quantity, product_category, product_tags, isActive]):
+            if not all([product_name, product_description, product_price, product_quantity, product_category, product_tags]) or isActive is None:
                 return Response({'message': 'All fields are required!'}, status=status.HTTP_400_BAD_REQUEST)
             
             success,result = insert_product(product_name, product_description, product_price, product_quantity, product_category, product_tags, isActive)
 
-            print("\nresult:\n",result)
             # If insertion is successful, return HTTP 201 Created   
             if success == True:
                 print("IN TRUE")
@@ -48,6 +53,13 @@ class ProductView(APIView):
             product_tags = request.data.get('productTags', None)
             isActive = request.data.get('isActive', None)
 
+            jwt_token = request.headers.get('Authorization', None)
+            if jwt_token:
+                decorded_token = verify_admin_jwt(jwt_token)
+                if not decorded_token:
+                    return Response({'message': 'Unauthorized! or Token has Expired'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
             result = update_product(product_name,product_description, product_price, product_quantity, product_category, product_tags, isActive)
 
             # If update is successful, return HTTP 200 OK   
@@ -62,6 +74,13 @@ class ProductView(APIView):
     def get(self, request):
         try:
             product_ids = request.query_params.getlist('productId', None)
+
+            jwt_token = request.headers.get('Authorization', None)
+            if jwt_token:
+                decorded_token = verify_user_jwt(jwt_token)
+                if not decorded_token:
+                    return Response({'message': 'Unauthorized! or Token has Expired'}, status=status.HTTP_401_UNAUTHORIZED)
+
             if product_ids:
                 result,not_found_ids = get_specific_products(product_ids)
                 if len(not_found_ids) == len(product_ids):
@@ -80,6 +99,13 @@ class ProductView(APIView):
     def delete(self, request):
         try:
             product_ids = request.query_params.getlist('productId', None)
+
+            jwt_token = request.headers.get('Authorization', None)
+            if jwt_token:
+                decorded_token = verify_admin_jwt(jwt_token)
+                if not decorded_token:
+                    return Response({'message': 'Unauthorized! or Token has Expired'}, status=status.HTTP_401_UNAUTHORIZED)
+
             if product_ids:
                 deleted_ids,not_found_ids = delete_product(product_ids)
                 if len(not_found_ids) == len(product_ids):

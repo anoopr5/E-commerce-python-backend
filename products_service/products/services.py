@@ -1,7 +1,9 @@
+import jwt
+import requests
 from .db_client import CosmosDBClient
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def insert_product(product_name, product_description, product_price, product_quantity, product_category, product_tags, isActive):
     """Insert a new product into the database asynchronously."""
@@ -106,11 +108,9 @@ def get_all_products():
 def get_specific_products(product_ids):
     """Get specific products from the database."""
     try:
-        # Create a new CosmosDBClient instance
         db_client = CosmosDBClient(container_name='Products')
         result = []
         not_found_ids = []
-        # Get specific products from the database
         for product_id in product_ids:
             print("product_id: ",product_id)
             db_value = db_client.read_item("productId", product_id)
@@ -134,9 +134,7 @@ def get_specific_products(product_ids):
 def delete_product(product_ids):
     """Delete a product from the database."""
     try:
-        # Create a new CosmosDBClient instance
         db_client = CosmosDBClient(container_name='Products')
-        # Delete the product from the database
         deleted_ids = []
         not_found_ids = []
         for product_id in product_ids:
@@ -150,3 +148,46 @@ def delete_product(product_ids):
         return deleted_ids, not_found_ids
     except Exception as e:
         return str(e)
+    
+def verify_admin_jwt(jwt_token):
+    try:
+        jwt_token = jwt_token.replace("Bearer ","",1)
+        decoded_jwt_token = jwt.decode(jwt_token,'secret', algorithms=["HS256"])
+        print("decoded_jwt_token: ",decoded_jwt_token)
+
+        if decoded_jwt_token.get('email') == 'Admin@123' :
+            given_datetime = datetime.strptime(decoded_jwt_token.get('datetime'), '%Y-%m-%d %H:%M:%S.%f')
+            current_time = datetime.now()
+            time_diff = current_time - given_datetime
+
+            if time_diff <= timedelta(minutes=30):
+                return True
+
+        return False
+    except Exception as e:
+        return False
+    
+def verify_user_jwt(jwt_token):
+    try:
+        url = "http://127.0.0.1:5000/api/v1/check/user/"
+        
+        jwt_token = jwt_token.replace("Bearer ","",1)
+        decoded_jwt_token = jwt.decode(jwt_token,'secret', algorithms=["HS256"])
+        print("decoded_jwt_token: ",decoded_jwt_token)
+        data = {
+            'email':decoded_jwt_token.get('email'),
+            'password':decoded_jwt_token.get('password')
+        }
+        response = requests.post(url, json=data)
+        print("response: ",response.json())
+        if response.status_code == 200:
+            given_datetime = datetime.strptime(decoded_jwt_token.get('datetime'), '%Y-%m-%d %H:%M:%S.%f')
+            current_time = datetime.now()
+            time_diff = current_time - given_datetime
+
+            if time_diff <= timedelta(minutes=30):
+                return True
+
+        return False
+    except Exception as e:
+        return False
