@@ -4,8 +4,9 @@ from rest_framework import status
 from rest_framework.status import *
 import json
 import jwt
-from datetime import datetime
-from .services import insert_product, update_product, get_all_products,get_specific_products,delete_product,verify_admin_jwt, verify_user_jwt
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from .services import insert_product, update_product, get_all_products,get_specific_products,delete_product,verify_admin_jwt, verify_user_jwt, check_product_availability
 
 class ProductView(APIView):
     def post(self, request):
@@ -71,6 +72,7 @@ class ProductView(APIView):
         except Exception as e:
             return Response({'message': f'Error creating product: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+    @method_decorator(cache_page(60 * 15))
     def get(self, request):
         try:
             product_ids = request.query_params.getlist('productId', None)
@@ -120,4 +122,39 @@ class ProductView(APIView):
             return Response({'message': f'Error deleting product: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         
+class CheckProductAvailability(APIView):
+    
+    def post(self, request):
+        products_list = request.data.get('productList')
+        
+        # Check if 'productList' is provided
+        if not products_list:
+            return Response({'message': 'Product list is required!'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Check product availability
+            result, not_found_ids, total_price = check_product_availability(products_list)
 
+            # Handle different cases based on not_found_ids
+            if len(not_found_ids) == len(products_list):
+                return Response(
+                    {'message': 'None of the products were found or are out of stock!',
+                     'not_found_ids': not_found_ids},status=status.HTTP_404_NOT_FOUND)
+            
+            elif not_found_ids:
+                return Response(
+                    {'message': 'Some products were not found or are out of stock!',
+                     'not_found_ids': not_found_ids,
+                     'products': result},status=status.HTTP_200_OK
+                )
+            
+            return Response(
+                {'message': 'All products are available for purchase!',
+                 'products': result,
+                 'totalPrice': total_price,
+                 'not_found_ids': not_found_ids},
+                status=status.HTTP_200_OK
+            )
+        
+        except Exception as e:
+            return Response({'message': f'Error processing products: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

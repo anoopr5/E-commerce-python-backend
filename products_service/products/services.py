@@ -191,3 +191,31 @@ def verify_user_jwt(jwt_token):
         return False
     except Exception as e:
         return False
+    
+def check_product_availability(products_list):
+    try:
+        db_client = CosmosDBClient(container_name='Products')
+        result = []
+        not_found_ids = []
+        total_price = 0
+        for product in products_list:
+            print("productid: ",product.get('productId'))
+            db_value = db_client.read_item("productId", product.get('productId'))
+            print("TILL HERE...",db_value)
+            if db_value:
+                if db_value.get('isActive'):
+                    print("NOT WOrkING")
+                    if db_value.get('productQuantity') >= product.get('quantity'):
+                        result.append(product)
+                        total_price += product.get('quantity') * db_value.get('productPrice')
+                    else:
+                        not_found_ids.append(product.get('productId'))
+                else:
+                    not_found_ids.append(product.get('productId'))
+            else:
+                not_found_ids.append(product.get('productId'))
+        print("RESULT:",result,"\nNOT FOUND:",not_found_ids)
+        return result, not_found_ids, total_price
+    except Exception as e:
+        return str(e)
+    

@@ -1,4 +1,5 @@
 import logging
+import uuid
 from .db_client import CosmosDBClient
 import re
 import phonenumbers
@@ -15,9 +16,10 @@ def insert_user(Fname, Lname, email, password,phone_number,address):
         # Create a new user object
         if db_item:
             return False, "User already exists"
-        
+        id = str(uuid.uuid4().int)[:6]
         user = {
-            'id': email,
+            'id': id,
+            'userId': id,
             'Fname': Fname,
             'Lname': Lname,
             'email': email,
